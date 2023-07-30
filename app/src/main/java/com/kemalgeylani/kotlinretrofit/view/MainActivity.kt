@@ -9,10 +9,15 @@ import com.kemalgeylani.kotlinretrofit.adapter.CryptoAdapter
 import com.kemalgeylani.kotlinretrofit.databinding.ActivityMainBinding
 import com.kemalgeylani.kotlinretrofit.model.CryptoModel
 import com.kemalgeylani.kotlinretrofit.service.CryptoAPI
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.internal.disposables.ArrayCompositeDisposable
+import io.reactivex.schedulers.Schedulers
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
 
 class MainActivity : AppCompatActivity() {
@@ -22,11 +27,18 @@ class MainActivity : AppCompatActivity() {
     private var cryptoModels : ArrayList<CryptoModel>? = null
     private var cryptoAdapter: CryptoAdapter? = null
 
+    // Disposable -> Activity, yaşam döngüsünde, destroy edildiğinde, call'ları hafızada yer tutmaması için
+    // temizleyen kullan-at torbadır.
+    private var compositeDisposable : CompositeDisposable? = null
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         val view = binding.root
         setContentView(view)
+
+        compositeDisposable = CompositeDisposable()
 
         //https://raw.githubusercontent.com/atilsamancioglu/K21-JSONDataSet/master/crypto.json
 
@@ -41,10 +53,17 @@ class MainActivity : AppCompatActivity() {
         val retrofit = Retrofit.Builder()
             .baseUrl(BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
-            .build()
+            .addCallAdapterFactory(RxJava2CallAdapterFactory.create()) // RxJava ile kullanlır.
+            .build().create(CryptoAPI::class.java)
 
-        val service = retrofit.create(CryptoAPI::class.java)
-        val call = service.getData()
+        compositeDisposable?.add(retrofit.getData()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(this::handlerResponse)
+        )
+
+        /*
+         val call = retrofit.create(CryptoAPI::class.java).getData()
 
         call.enqueue(object: Callback<List<CryptoModel>>{
             override fun onResponse(
@@ -68,6 +87,24 @@ class MainActivity : AppCompatActivity() {
             }
 
         })
+        */
 
     }
+
+    private fun handlerResponse(cryptoList: List<CryptoModel>) {
+
+        cryptoModels = ArrayList(cryptoList)
+
+        cryptoModels?.let {
+            cryptoAdapter = CryptoAdapter(it)
+            binding.recyclerView.adapter = cryptoAdapter
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        compositeDisposable?.clear()
+    }
+
 }
