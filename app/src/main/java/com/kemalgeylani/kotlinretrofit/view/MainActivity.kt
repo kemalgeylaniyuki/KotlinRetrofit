@@ -15,7 +15,7 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-class MainActivity : AppCompatActivity(), CryptoAdapter.Listener {
+class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val BASE_URL = "https://raw.githubusercontent.com/"
@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity(), CryptoAdapter.Listener {
                         cryptoModels = ArrayList(it)
 
                         cryptoModels?.let {
-                            cryptoAdapter = CryptoAdapter(it,this@MainActivity)
+                            cryptoAdapter = CryptoAdapter(it)
                             binding.recyclerView.adapter = cryptoAdapter
                         }
                     }
@@ -69,9 +69,5 @@ class MainActivity : AppCompatActivity(), CryptoAdapter.Listener {
 
         })
 
-    }
-
-    override fun onItemClick(cryptoModel: CryptoModel) {
-        Toast.makeText(this,"Clicked : ${cryptoModel.currency}",Toast.LENGTH_LONG).show()
     }
 }

@@ -3,12 +3,13 @@ package com.kemalgeylani.kotlinretrofit.adapter
 import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.kemalgeylani.kotlinretrofit.databinding.RecyclerRowBinding
 import com.kemalgeylani.kotlinretrofit.model.CryptoModel
 
 
-class CryptoAdapter(var cryptoModelList: ArrayList<CryptoModel>, private val listener : Listener) : RecyclerView.Adapter<CryptoAdapter.CryptoHolder>() {
+class CryptoAdapter(var cryptoModelList: ArrayList<CryptoModel>) : RecyclerView.Adapter<CryptoAdapter.CryptoHolder>() {
 
     interface Listener{
         fun onItemClick(cryptoModel: CryptoModel)
@@ -18,15 +19,11 @@ class CryptoAdapter(var cryptoModelList: ArrayList<CryptoModel>, private val lis
 
     class CryptoHolder(val binding: RecyclerRowBinding) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(cryptoModel : CryptoModel, colors : Array<String>, position : Int, listener: Listener){
+        fun bind(cryptoModel : CryptoModel, colors : Array<String>, position : Int){
 
             binding.currencyText.text = cryptoModel.currency
             binding.priceText.text = cryptoModel.price
             itemView.setBackgroundColor(Color.parseColor(colors[position % 8]))
-
-            itemView.setOnClickListener {
-                listener.onItemClick(cryptoModel)
-            }
 
         }
 
@@ -42,7 +39,11 @@ class CryptoAdapter(var cryptoModelList: ArrayList<CryptoModel>, private val lis
     }
 
     override fun onBindViewHolder(holder: CryptoHolder, position: Int) {
-        holder.bind(cryptoModelList[position],colors,position,listener)
+        holder.bind(cryptoModelList[position],colors,position)
+
+        holder.itemView.setOnClickListener {
+            Toast.makeText(holder.itemView.context,"Clicked to ${cryptoModelList[position]}",Toast.LENGTH_LONG).show()
+        }
     }
 
 }
