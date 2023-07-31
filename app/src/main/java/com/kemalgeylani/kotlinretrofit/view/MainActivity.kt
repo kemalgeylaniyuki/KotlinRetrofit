@@ -13,6 +13,13 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.internal.disposables.ArrayCompositeDisposable
 import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -29,7 +36,12 @@ class MainActivity : AppCompatActivity() {
 
     // Disposable -> Activity, yaşam döngüsünde, destroy edildiğinde, call'ları hafızada yer tutmaması için
     // temizleyen kullan-at torbadır.
-    private var compositeDisposable : CompositeDisposable? = null
+    //private var compositeDisposable : CompositeDisposable? = null
+
+    private var job : Job? = null
+    val exceptionHandler = CoroutineExceptionHandler { coroutineContext, throwable ->
+        println("Exception : ${throwable.localizedMessage}")
+    }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,8 +49,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         val view = binding.root
         setContentView(view)
-
-        compositeDisposable = CompositeDisposable()
+        //compositeDisposable = CompositeDisposable()
 
         //https://raw.githubusercontent.com/atilsamancioglu/K21-JSONDataSet/master/crypto.json
 
@@ -53,14 +64,33 @@ class MainActivity : AppCompatActivity() {
         val retrofit = Retrofit.Builder()
             .baseUrl(BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
-            .addCallAdapterFactory(RxJava2CallAdapterFactory.create()) // RxJava ile kullanlır.
+            //.addCallAdapterFactory(RxJava2CallAdapterFactory.create()) // RxJava ile kullanlır.
             .build().create(CryptoAPI::class.java)
 
+        job = CoroutineScope(Dispatchers.IO).launch {
+            val response = retrofit.getData()
+
+            withContext(Dispatchers.Main + exceptionHandler){
+                if (response.isSuccessful){
+                    response.body()?.let {
+                        cryptoModels = ArrayList(it)
+
+                        cryptoModels?.let {
+                            cryptoAdapter = CryptoAdapter(it)
+                            binding.recyclerView.adapter = cryptoAdapter
+                        }
+                    }
+                }
+            }
+        }
+
+        /* RxJava
         compositeDisposable?.add(retrofit.getData()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(this::handlerResponse)
         )
+        */
 
         /*
          val call = retrofit.create(CryptoAPI::class.java).getData()
@@ -91,6 +121,7 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    /* RxJava HandlerResponse
     private fun handlerResponse(cryptoList: List<CryptoModel>) {
 
         cryptoModels = ArrayList(cryptoList)
@@ -100,11 +131,14 @@ class MainActivity : AppCompatActivity() {
             binding.recyclerView.adapter = cryptoAdapter
         }
     }
+    */
 
     override fun onDestroy() {
         super.onDestroy()
 
-        compositeDisposable?.clear()
+        //compositeDisposable?.clear()
+
+        job?.cancel()
     }
 
 }
